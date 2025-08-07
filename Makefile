@@ -1,50 +1,39 @@
-# Toolchain
 CC = arm-none-eabi-gcc
 OBJCOPY = arm-none-eabi-objcopy
 
-# MCU and flags
 CPU = cortex-m3
 CFLAGS = -mcpu=$(CPU) -mthumb -std=gnu99 -Wall -O0
 
-# Directories
-SRCDIR = Core/source
-INCDIR = Core/include
+SRCDIR = Core/source Drivers/source Example/source
+INCDIR = Core/include Drivers/include Example/include
 STARTUPDIR = Startup
 LINKERDIR = Linker
 BUILDDIR = build
 
-# Linker script path
 LDSCRIPT = $(LINKERDIR)/stm32_linker.ld
 
-# Sources - add your source files here, update paths for startup
-SRCS = $(SRCDIR)/main.c $(SRCDIR)/syscalls.c $(SRCDIR)/sysmem.c $(STARTUPDIR)/startup_stm32f103rbt6.s
+SRCS = $(wildcard $(addsuffix /*.c, $(SRCDIR))) \
+       $(STARTUPDIR)/startup_stm32f103rbt6.s
 
-# Objects go directly into build/, remove directory paths for .o names
-OBJS = $(patsubst %.c,$(BUILDDIR)/%.o,$(notdir $(filter %.c,$(SRCS)))) \
-       $(patsubst %.s,$(BUILDDIR)/%.o,$(notdir $(filter %.s,$(SRCS))))
+OBJS = $(patsubst %.c, $(BUILDDIR)/%.o, $(notdir $(filter %.c, $(SRCS)))) \
+       $(patsubst %.s, $(BUILDDIR)/%.o, $(notdir $(filter %.s, $(SRCS))))
 
-# Default target
 all: $(BUILDDIR)/firmware.elf $(BUILDDIR)/firmware.bin
 
-# Compile C files from SRCDIR to build/ flat
-$(BUILDDIR)/%.o: $(SRCDIR)/%.c
-	@mkdir -p $(BUILDDIR)
-	$(CC) $(CFLAGS) -I$(INCDIR) -c $< -o $@
+$(BUILDDIR)/%.o:
+	mkdir -p $(BUILDDIR)
+	$(CC) $(CFLAGS) $(foreach dir, $(INCDIR), -I$(dir)) -c $(firstword $(wildcard $(addsuffix /$*.c, $(SRCDIR))) ) -o $@
 
-# Compile ASM files from STARTUPDIR to build/ flat
-$(BUILDDIR)/%.o: $(STARTUPDIR)/%.s
-	@mkdir -p $(BUILDDIR)
+$(BUILDDIR)/startup_stm32f103rbt6.o: $(STARTUPDIR)/startup_stm32f103rbt6.s
+	mkdir -p $(BUILDDIR)
 	$(CC) $(CFLAGS) -c $< -o $@
 
-# Link
 $(BUILDDIR)/firmware.elf: $(OBJS)
 	$(CC) $(CFLAGS) -T $(LDSCRIPT) $^ -o $@
 
-# ELF to bin
 $(BUILDDIR)/firmware.bin: $(BUILDDIR)/firmware.elf
 	$(OBJCOPY) -O binary $< $@
 
-# Clean
 clean:
 	rm -rf $(BUILDDIR)
 
