@@ -1,114 +1,125 @@
-/******************************************************************************
-* FILENAME :timer.c
-* DESCRIPTION :Timer driver functions are being implemented in this file.
-* AUTHOR : Hammad
-******************************************************************************/
+/*============================== (c) 2025 ===================================
+** File Name   :  timer.c
+** Author      :  Hammad
+** Created on  :  Aug 08, 2025
+*---------------------------------------------------------------------------*
+** Description : Implements Timer driver functions for initialization, delay
+**               generation, and bus frequency configuration.
+=============================================================================*/
 
-/*********** includes *******************************************************/
-
+/*=============================================================================
+**                                 Includes
+=============================================================================*/
 #include "timer.h"
 #include "nvic.h"
 #include "gpio.h"
 #include "clock.h"
 
-/**********  Pointer Array of addresses **************************************/
+/*=============================================================================
+**                             Private Data
+=============================================================================*/
 
-static timer_registers * timer_address [5U] = 
+/* Pointer array to timer register base addresses */
+static timer_registers * timer_address[5U] = 
 {
-   ((timer_registers*) (0x40012C00U)),
-   ((timer_registers*) (0x40000000U)),
-   ((timer_registers*) (0x40000400U)),
-   ((timer_registers*) (0x40000800U)),
-   ((timer_registers*) (0x40000C00U))
+    ((timer_registers*)(0x40012C00U)), /* TIM1 */
+    ((timer_registers*)(0x40000000U)), /* TIM2 */
+    ((timer_registers*)(0x40000400U)), /* TIM3 */
+    ((timer_registers*)(0x40000800U)), /* TIM4 */
+    ((timer_registers*)(0x40000C00U))  /* TIM5 */
 };
 
-static void Timer_BusFreq (clock_freq_type pre_scaler);
+/*=============================================================================
+**                             Private Functions
+=============================================================================*/
+static void Timer_BusFreq(clock_freq_type pre_scaler);
 
-/**
- * @brief Timer_Init : This fuction enables the clock for timer and set the pre-scaler
- * @param peripherals, timer, prs
- * @return void
- */
-void Timer_Init (peripheral_clock_type peripherals, timer_type timer, clock_freq_type pre_scaler)
+/*=============================================================================
+**                             Public Functions
+=============================================================================*/
+
+/******************************************************************************
+** Function Name  : Timer_Init
+** Description    : Enables clock for the given timer and sets the prescaler.
+** Input          : peripherals (peripheral_clock_type) - Peripheral clock to enable
+**                  timer       (timer_type)            - Timer index
+**                  pre_scaler  (clock_freq_type)        - Clock frequency prescaler
+** Output         : None
+** Return         : None
+******************************************************************************/
+void Timer_Init(peripheral_clock_type peripherals, timer_type timer, clock_freq_type pre_scaler)
 {
-   /* Enable clock for timers */
-   Rcc_Enabler(peripherals);
-   
-   /* Setting the Pre-Scaler */
-   timer_address[timer]->PSC = pre_scaler - 1;
-   
+    /* Enable clock for timers */
+    Rcc_Enabler(peripherals);
+
+    /* Set prescaler value */
+    timer_address[timer]->PSC = pre_scaler - 1;
 }
 
-/**
- * @brief 
- * 
- * @param timer 
- * @param millisec 
- */
-void Timer_Delay (timer_type timer, uint16 millisec)
+/******************************************************************************
+** Function Name  : Timer_Delay
+** Description    : Generates a blocking delay using the specified timer.
+** Input          : timer     (timer_type) - Timer index
+**                  millisec  (uint16)     - Delay in milliseconds
+** Output         : None
+** Return         : None
+******************************************************************************/
+void Timer_Delay(timer_type timer, uint16 millisec)
 {  
-   /* Setting value in auto reload register */
-	timer_address[timer]->ARR = millisec;
-   
-   /* Enabling the Counter */
-   timer_address[timer]->CR1 = HIGH;
+    /* Set Auto-Reload Register */
+    timer_address[timer]->ARR = millisec;
 
-   /* Start the counter from zero */
-	timer_address[timer]->CNT = 0;
+    /* Enable the counter */
+    timer_address[timer]->CR1 = HIGH;
 
-   /* Delay implementation putting a wait until counter reaches the ARR value */
-	while (!(timer_address[timer]->CNT == millisec - 1));
+    /* Reset counter to zero */
+    timer_address[timer]->CNT = 0;
 
-   /* Setting the counter again to zero */
-	timer_address[timer]->CNT &= 0;
+    /* Wait until counter reaches ARR value */
+    while (!(timer_address[timer]->CNT == millisec - 1));
+
+    /* Reset counter to zero */
+    timer_address[timer]->CNT &= 0;
 }
 
-/**
- * @brief Bus_Freq : To set the timer bus frequency to 16 and 32MHz 
- * @param pre_scaler 
- * @return void
- */
-static void Timer_BusFreq (clock_freq_type pre_scaler)
+/*=============================================================================
+**                             Private Functions
+=============================================================================*/
+
+/******************************************************************************
+** Function Name  : Timer_BusFreq
+** Description    : Configures the timer bus frequency to 16MHz or 32MHz.
+** Input          : pre_scaler (clock_freq_type) - Desired frequency
+** Output         : None
+** Return         : None
+******************************************************************************/
+static void Timer_BusFreq(clock_freq_type pre_scaler)
 {
-	if (pre_scaler == FREQ_16)
-   { 
-      /* Selecting Pll as clock and wait for it to become ready */
-	   RCC_CFGR |= SYS_CLOCK_SWITCH;
-	   while(!(RCC_CFGR & SYS_CLOCK_STATUS ));
+    if (pre_scaler == FREQ_16)
+    { 
+        /* Select PLL as clock source and wait for it to be ready */
+        RCC_CFGR |= SYS_CLOCK_SWITCH;
+        while (!(RCC_CFGR & SYS_CLOCK_STATUS));
 
-      /* Enabling the Pll and wait for it to become ready (requires 6 cycles)*/
-	   RCC_CR |= PLLON;
-	   while(!(RCC_CR & PLL_RDY));
+        /* Enable PLL and wait until ready */
+        RCC_CR |= PLLON;
+        while (!(RCC_CR & PLL_RDY));
 
-      /* Setting the Pll for 16MHz */
-	   RCC_CFGR |= PLL_MUL_4;
-   }
+        /* Set PLL for 16MHz */
+        RCC_CFGR |= PLL_MUL_4;
+    }
 
-	if (pre_scaler == FREQ_32)
-   {  
-      /* Selecting Pll as clock and wait for it to become ready */
-	   RCC_CFGR |= SYS_CLOCK_SWITCH;
-	   while(!(RCC_CFGR & SYS_CLOCK_STATUS ));
+    if (pre_scaler == FREQ_32)
+    {  
+        /* Select PLL as clock source and wait for it to be ready */
+        RCC_CFGR |= SYS_CLOCK_SWITCH;
+        while (!(RCC_CFGR & SYS_CLOCK_STATUS));
 
-      /* Enabling the Pll and wait for it to become ready (requires 6 cycles)*/
-	   RCC_CR |= PLLON;
-	   while(!(RCC_CR & PLL_RDY));
-      
-      /* Setting the Pll for 32MHz */
-      RCC_CFGR |= PLL_MUL_8;
-   }
+        /* Enable PLL and wait until ready */
+        RCC_CR |= PLLON;
+        while (!(RCC_CR & PLL_RDY));
+
+        /* Set PLL for 32MHz */
+        RCC_CFGR |= PLL_MUL_8;
+    }
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-

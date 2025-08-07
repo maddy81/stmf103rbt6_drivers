@@ -1,21 +1,28 @@
-/******************************************************************************
-* FILENAME : uart.c
-* DESCRIPTION : Uart driver functions are being implemented in this file.
-* AUTHOR : Hammad
-******************************************************************************/
+/*============================== (c) 2025 ===================================
+** File Name   :  uart.c
+** Author      :  Hammad
+** Created on  :  Aug 08, 2025
+*---------------------------------------------------------------------------*
+** Description : Uart driver functions are being implemented in this file.
+=============================================================================*/
 
-/********** Includes *********************************************************/
-
+/*=============================================================================
+**                                 Includes
+=============================================================================*/
 #include "uart.h"
 #include "clock.h"
 #include "nvic.h"
 #include "gpio.h"
 //#include "lin.h"
 
+/*=============================================================================
+**                       Private Functions Prototypes
+=============================================================================*/
 static void Usart_GpioInit (peripheral_clock_type peripherals);
 
-/**********  Pointer Array of addresses **************************************/
-
+/*=============================================================================
+**                      Pointer Array of addresses
+=============================================================================*/
 Uart_RegisterType * UartChannels [3U] =
 {
 	((Uart_RegisterType *) (0x40013800U)),
@@ -23,12 +30,13 @@ Uart_RegisterType * UartChannels [3U] =
 	((Uart_RegisterType *) (0x40004800U)),
 };
 
-/**
- * @brief Usart_Init : sets clock, enables TX and Rx of uart and their interrupts 
- * @param peripherals
- * @param reg
- * @return void
- */
+/****************************************************************************** 
+** Function Name  : Usart_Init
+** Description    : sets clock, enables TX and Rx of uart and their interrupts 
+** Input          : peripherals, reg
+** Output         : None
+** Return         : void
+******************************************************************************/
 void Usart_Init (peripheral_clock_type peripherals, Uart_Type uart, BaudrateType baud, IRQn_Type irq)
 {
 	Uart_RegisterType * uartChannel = UartChannels[uart];
@@ -40,16 +48,17 @@ void Usart_Init (peripheral_clock_type peripherals, Uart_Type uart, BaudrateType
 
 	uartChannel->CR1 = (TX_COMPLETE_INTERRUPT_ENABLE | TX_ENABLE | RX_ENABLE | USART_ENABLE | RX_INTERRUPT_ENABLE);
 
-	//Enable_Irq();
-	//NVIC_EnableIRQ(irq);
+	Enable_Irq();
+	NVIC_EnableIRQ(irq);
 }
 
-
-/**
- * @brief Uart_GpioInit : Enable gpio pins according to uart
- * @param peripherals
- * @return static void
- */
+/****************************************************************************** 
+** Function Name  : Usart_GpioInit
+** Description    : Enable gpio pins according to uart
+** Input          : peripherals
+** Output         : static void
+** Return         : None
+******************************************************************************/
 static void Usart_GpioInit (peripheral_clock_type peripherals)
 {
 	if (peripherals == USART1_EN)
@@ -71,25 +80,26 @@ static void Usart_GpioInit (peripheral_clock_type peripherals)
 	}
 }
 
-/**
- * @brief Uart_SendByte : For Sending data byte by byte
- * @param uart, data
- * @return uint8
- */
+/****************************************************************************** 
+** Function Name  : Usart_SendByte
+** Description    : For Sending data byte by byte
+** Input          : uart, data
+** Output         : None
+** Return         : uint8
+******************************************************************************/
 uint8 Usart_SendByte (Uart_Type uart,  char data)
 {
 	return UartChannels[uart]->DR = data;
 }
 
-/**
- * @brief Uart_Receive_Data : Receive data through Uart
- * @param uart
- * @return uint8
- */
+/****************************************************************************** 
+** Function Name  : Usart_ReceiveByte
+** Description    : Receive data through Uart
+** Input          : uart
+** Output         : None
+** Return         : uint8
+******************************************************************************/
 uint8 Usart_ReceiveByte (Uart_Type uart)
 {
 	return UartChannels[uart]->DR;
 }
-
-
-
